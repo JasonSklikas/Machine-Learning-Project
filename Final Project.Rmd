@@ -1,0 +1,97 @@
+---
+title: "Machine Learning Project"
+author: "Jason Sklikas"
+date: "13 May 2017"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Machine Learning Project
+
+### Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+Goal
+The goal of this project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+
+###Loading and Cleaning Data
+We are going to load the data adding NA where the cells were empty.
+```{r}
+library(caret)
+library(rpart.plot)
+library(rattle)
+library(rpart)
+library(randomForest)
+```
+
+```{r,cache=TRUE}
+testing<- read.csv("pml-testing.csv",na.strings = c("NA", ""))
+training <- read.csv("pml-training.csv",na.strings = c("NA", ""))
+
+training <- training[, colSums(is.na(training)) == 0]
+testing <- testing[, colSums(is.na(testing)) == 0]
+
+trainData <- training[,-c(1:6)]
+testData <- testing[, -c(1:6)]
+```
+From our training and test set we remove the first six columns because they will not help us in our predictions.
+
+We split the cleaned training set into a 60% train set  and a 30% test.
+```{r}
+set.seed(9526)
+inTrain <- createDataPartition(trainData$classe, p = 0.6, list = FALSE)
+mytrain <- trainData[inTrain, ]
+mytest <- trainData[-inTrain, ]
+```
+
+### Prediction Algoriths
+We use classification trees and random forests to predict the outcome
+we consider 5fold
+cross validation
+(default setting in trainControl function is 10) when implementing the algorithm to save a little computing
+time. Since data transformations may be less important in nonlinear
+models like classification trees, we do
+not transform any variables.
+
+```{r, cache=TRUE}
+fit_rpart <- train(classe ~ ., data = mytrain, method = "rpart")
+fit_rpart
+fancyRpartPlot(fit_rpart$finalModel)
+
+predict_rpart <- predict(fit_rpart, mytest)
+conf_rpart <- confusionMatrix(mytest$classe, predict_rpart)
+conf_rpart
+```
+The accuracy is 0.49. Using classification tree does not predict the outcome class very well and we will try the random forest "rm" method.
+
+###RM Method
+
+```{r, cache=TRUE}
+fit_rf<-randomForest(classe ~ ., data=mytrain)
+print(fit_rf, digits = 4)
+plot(fit_rf)
+
+predict_rf<- predict(fit_rf,mytest)
+conf_rf <- confusionMatrix(mytest$classe, predict_rf)
+conf_rf
+```
+We see now with this method that the accuracy rate is 0.9966. This may be due to the fact that many predictors are
+highly correlated.
+
+### Testing Set prediction
+Random Forest gave an accuracy in the Test dataset of 99.57% which was much  more accurate than the descision tree. The expected out-of-sample error is 100-99.66= 0.34%
+```{r}
+predict(fit_rf, testData)
+
+```
+
+
+
